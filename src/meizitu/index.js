@@ -1,8 +1,10 @@
 const fs = require('fs')
 const url = require('url')
+const path = require('path')
 const charset = require('superagent-charset')
 const request = charset(require('superagent'))
 const cheerio = require('cheerio')
+const _ = require('lodash')
 
 const Meizitu = require('../../models/Meizitu')
 
@@ -71,6 +73,7 @@ class MeizituImages {
         // 遍历完一个标签后，下载标签下的所有图片
         _this.downloadTagImages(tagName)
       }
+      console.log('*************Just enjoy*************')
     } catch (err) {
       console.log(err)
     }
@@ -96,10 +99,25 @@ class MeizituImages {
     try {
       const _this = this
       const tagGroupsLinks = _this.groupLinks[tagName]
+      fs.mkdirSync(path.join(__dirname, `../../public/${tagName}`))
       for (let i = 0; i < tagGroupsLinks.length; i++) {
-        console.log(`开始下载标签${ tagName }的第${ i + 1 }项：${tagGroupsLinks[i]}`)
+        console.log(`开始请求标签${ tagName }的第${ i + 1 }项：${tagGroupsLinks[i]}`)
         const $ = cheerio.load((await request.get(tagGroupsLinks[i]).charset('gbk').buffer(true)).text)
-        console.log(共`$('#picture img').length张图片`)
+        const groupName = $('.metaRight h2').text()
+        fs.mkdirSync(path.join(__dirname, `../../public/${tagName}/${groupName}`))
+        console.log(`共${ $('#picture img').length }张图片`)
+        $('#picture img').each(async function (index) {
+          const imageLink = $(this).attr('src')
+          const imageName = _.last(_.split(imageLink, '/'))
+          const downloadStream = fs.createWriteStream(path.join(__dirname, `../../public/${tagName}/${groupName}/${imageName}`))
+          downloadStream.on('finish', () => {
+            console.log(`${ tagName }/${ groupName }/${imageName}下载完成`)
+            // TODO: 存储到MongoDB
+          })
+          await request
+            .get(imageLink)
+            .pipe(downloadStream)
+        })
       }
     } catch (err) {
       console.log(err)
