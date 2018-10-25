@@ -110,9 +110,13 @@ class MeizituImages {
           const imageLink = $(this).attr('src')
           const imageName = _.last(_.split(imageLink, '/'))
           const downloadStream = fs.createWriteStream(path.join(__dirname, `../../public/${tagName}/${groupName}/${imageName}`))
-          downloadStream.on('finish', () => {
+          downloadStream.on('finish', async () => {
             console.log(`${ tagName }/${ groupName }/${imageName}下载完成`)
-            // TODO: 存储到MongoDB
+            await (new Meizitu()).saveImage({
+              tag_name: tagName,
+              group_name: groupName,
+              image_name: imageName
+            })
           })
           await request
             .get(imageLink)
